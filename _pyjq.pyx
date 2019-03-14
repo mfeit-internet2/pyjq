@@ -4,6 +4,7 @@ Python binding for jq
 """
 
 import os
+import sys
 
 from collections import OrderedDict
 import six
@@ -44,7 +45,7 @@ cdef extern from "jv.h":
 
     jv jv_number(double)
     double jv_number_value(jv)
-    bint jv_is_integer(jv)
+    bint jv_is_integer_large(jv)
 
     jv jv_array()
     jv jv_array_sized(int)
@@ -104,8 +105,13 @@ cdef object jv_to_pyobj(jv jval):
         return True
     elif kind == JV_KIND_NUMBER:
         v = jv_number_value(jval)
-        if jv_is_integer(jval):
-            return int(v)
+        if jv_is_integer_large(jval):
+            if (sys.version_info > (3, 0)):
+                # Python 3 - All ints are arbitrarily-large
+                return int(v)
+            else:
+                # Python 2 - Has 32-bit ints and arbitrarily-large longs
+                return long(v) if v > sys.maxsize else int(v)
         return v
     elif kind == JV_KIND_STRING:
         return jv_string_value(jval).decode('utf-8')
